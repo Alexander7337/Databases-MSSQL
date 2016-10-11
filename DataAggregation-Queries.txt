@@ -1,0 +1,182 @@
+SELECT DISTINCT d.Name
+FROM Department AS d
+
+	OR
+
+SELECT d.Name
+FROM Department d
+GROUP BY d.DepartmentName
+
+------------------------------------------------------------------------------
+01. Records’ Count
+
+select count(*) as 'Count'
+from WizzardDeposits
+
+------------------------------------------------------------------------------
+02. Longest Magic Wand
+
+select max(w.MagicWandSize) as 'LongestMagicWand'
+from WizzardDeposits w
+
+------------------------------------------------------------------------------
+03. Longest Magic Wand per Deposit Groups
+
+select w.DepositGroup, max(w.MagicWandSize) as 'LongestMagicWand'
+from WizzardDeposits w
+group by w.DepositGroup
+
+------------------------------------------------------------------------------
+04. Smallest Deposit Group per Magic Wand Size
+
+select DepositGroup
+	from (
+		select w.DepositGroup, avg(w.MagicWandSize) as 'LongestMagicWand'
+			from WizzardDeposits w
+				group by w.DepositGroup) b
+					where b.LongestMagicWand = (
+						select min(a.LongestMagicWand)
+							from (
+								select w.DepositGroup, avg(w.MagicWandSize) as 'LongestMagicWand'
+									from WizzardDeposits w
+										group by w.DepositGroup ) a )
+
+------------------------------------------------------------------------------
+05. Deposits Sum
+
+select w.DepositGroup, sum(w.DepositAmount) as 'TotalSum'
+from WizzardDeposits w
+group by w.DepositGroup
+
+------------------------------------------------------------------------------
+06. Deposits Sum for Ollivander Family
+
+select w.DepositGroup, sum(w.DepositAmount) as 'TotalSum'
+from WizzardDeposits w
+where w.MagicWandCreator = 'Ollivander family'
+group by w.DepositGroup
+
+------------------------------------------------------------------------------
+07. Deposits Filter
+
+select w.DepositGroup, sum(w.DepositAmount) as 'TotalSum'
+from WizzardDeposits w
+where w.MagicWandCreator = 'Ollivander family'
+group by w.DepositGroup
+having sum(w.DepositAmount) < 150000
+order by 'TotalSum' desc
+
+------------------------------------------------------------------------------
+08. Deposit Charge
+
+select dGroups.DepositGroup, dGroups.MagicWandCreator, min(dGroups.DepositCharge)
+	from WizzardDeposits dGroups
+		group by dGroups.DepositGroup, dGroups.MagicWandCreator
+			order by dGroups.MagicWandCreator, dGroups.DepositGroup
+
+------------------------------------------------------------------------------
+09. Age Groups
+
+select wd.range as [AgeGroup], count(*) as [WizardCount]
+from (
+	select case
+		when Age between 0 and 10 then '[0-10]'
+		when Age between 11 and 20  then '[11-20]'
+		when Age between 21 and 30 then '[21-30]'
+		when Age between 31 and 40 then '[31-40]'
+		when Age between 41 and 50 then '[41-50]'
+		when Age between 51 and 60 then '[51-60]'
+		else '[61+]'
+			end range
+	from WizzardDeposits) wd
+		group by wd.range
+
+------------------------------------------------------------------------------
+10. First Letter
+
+select left(w.FirstName, 1) as 'first letter'
+from WizzardDeposits w
+where w.DepositGroup = 'Troll Chest'
+	group by left(w.FirstName, 1)
+
+------------------------------------------------------------------------------
+11. Average Interest
+
+select w.DepositGroup, w.IsDepositExpired, avg(w.DepositInterest) as [AverageIntereset]
+from WizzardDeposits w
+where w.DepositStartDate > '19850101'
+group by w.DepositGroup, w.IsDepositExpired
+order by w.DepositGroup desc, w.IsDepositExpired asc
+
+------------------------------------------------------------------------------
+12. Rich Wizard, Poor Wizard
+
+SELECT SUM(o.rlt) 
+  FROM (SELECT tbl.DepositAmount - (SELECT w.DepositAmount
+	                                  FROM WizzardDeposits w
+                                     WHERE w.Id = tbl.Id + 1) AS rlt
+          FROM WizzardDeposits AS tbl) AS o
+
+------------------------------------------------------------------------------
+13. Employees Minimum Salaries
+
+select e.DepartmentID, min(e.Salary) as 'MinimumSalary'
+from Employees e
+where (e.DepartmentID = 2 or e.DepartmentID = 5 or e.DepartmentID = 7) and e.HireDate > '20000101'
+group by e.DepartmentID
+
+------------------------------------------------------------------------------
+14. Employees Average Salaries
+
+select *
+	into dbo.EmployeesAverageSalaries
+from Employees e
+where e.Salary > 30000
+
+delete from EmployeesAverageSalaries
+where ManagerID = 42
+
+update EmployeesAverageSalaries
+set Salary += 5000
+where DepartmentID = 1
+
+select e.DepartmentID, avg(e.Salary) as 'AverageSalary'
+from EmployeesAverageSalaries e
+group by e.DepartmentID
+
+------------------------------------------------------------------------------
+15. Employees Maximum Salaries
+
+select e.DepartmentID, max(e.Salary) as 'MaxSalary'
+from Employees e
+group by e.DepartmentID
+having not max(e.Salary) between 30000 and 70000
+
+------------------------------------------------------------------------------
+16. Employees Count Salaries
+
+select count(e.Salary) as Count
+from Employees e
+where e.ManagerID is null
+
+------------------------------------------------------------------------------
+17. 3rd Highest Salary
+
+SELECT DISTINCT sal.DepartmentID, sal.Salary 
+  FROM(
+SELECT DepartmentID, Salary, DENSE_RANK() OVER (PARTITION BY DepartmentID ORDER BY Salary DESC) AS R FROM Employees) AS sal
+ WHERE R = 3
+
+------------------------------------------------------------------------------
+18. Salary Challenge
+
+WITH MyTable AS(
+SELECT DepartmentID, AVG(Salary) AS AVG_Salary 
+  FROM Employees 
+ GROUP BY DepartmentID)
+SELECT TOP 10 Employees.FirstName,Employees.LastName,Employees.DepartmentID FROM MyTable, Employees
+ WHERE MyTable.AVG_Salary < Employees.Salary and Employees.DepartmentID = MyTable.DepartmentID
+ ORDER BY Employees.DepartmentID
+
+------------------------------------------------------------------------------
+
