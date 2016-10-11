@@ -1,0 +1,147 @@
+01. Find Names of All Employees by First Name
+
+select e.FirstName, e.LastName
+from Employees e
+where e.FirstName like 'SA%'
+
+--------------------------------------------------------------------------------------------
+02. Find Names of All Employees by Last Name
+
+select e.FirstName, e.LastName
+from Employees e
+where e.LastName like '%ei%'
+
+--------------------------------------------------------------------------------------------
+03. Find First Names of All Employess
+
+select e.FirstName
+from Employees e
+where (e.HireDate between '1994/12/31' and '2006/01/01') 
+	and e.DepartmentID = 3 
+	or e.DepartmentID = 10
+
+--------------------------------------------------------------------------------------------
+04. Find All Employees Except Engineers
+
+select e.FirstName, e.LastName
+from Employees e
+where e.JobTitle not like '%Engineer%'
+
+--------------------------------------------------------------------------------------------
+05. Find Towns with Name Length
+
+select t.[Name]
+from Towns t
+where len(t.[Name]) = 5 or len(t.[Name]) = 6
+order by t.[Name] asc
+
+
+--------------------------------------------------------------------------------------------
+06. Find Towns Starting With
+
+select t.[TownID], t.[Name]
+from Towns t
+where t.[Name] like '[MKBE]%'
+order by t.[Name] asc
+
+--------------------------------------------------------------------------------------------
+07. Find Towns Not Starting With
+
+select t.[TownID], t.[Name]
+from Towns t
+where t.[Name] like '[^RBD]%'
+order by t.[Name] asc
+
+--------------------------------------------------------------------------------------------
+08. Create View Employees Hired After
+
+create view V_EmployeesHiredAfter2000 as 
+select e.FirstName, e.LastName
+from Employees e
+where e.HireDate > '2000/12/31'
+
+--------------------------------------------------------------------------------------------
+09. Length of Last Name
+
+select e.[FirstName], e.[LastName]
+from Employees e
+where len(e.[LastName]) = 5
+
+--------------------------------------------------------------------------------------------
+10. Countries Holding 'A'
+
+select c.CountryName, c.IsoCode
+from Countries c 
+where len(c.CountryName) - len(replace(c.CountryName, 'a', '')) >= 3
+order by c.IsoCode
+
+--------------------------------------------------------------------------------------------
+11. Mix of Peak and River Names
+
+SELECT p.PeakName, r.RiverName, lower(SUBSTRING(p.PeakName, 1, len(p.PeakName) - 1) + r.RiverName) as Mix
+FROM Peaks p, Rivers r
+where RIGHT(p.PeakName, 1) = LEFT(r.RiverName,1)
+order by Mix
+
+--------------------------------------------------------------------------------------------
+12. Games From 2011 and 2012 Year
+
+select top 50 g.Name as Game,
+format(g.Start, 'yyyy-MM-dd') as S
+from Games g
+where year(g.Start)= 2011 or year(g.Start) =  2012
+order by g.Start, g.Name
+
+--------------------------------------------------------------------------------------------
+13. User Email Providers
+
+select g.Username, 
+	SUBSTRING(g.Email, CHARINDEX('@', g.Email) + 1, LEN(g.Email)) as Domain
+from Users g
+	order by Domain, g.Username
+
+--------------------------------------------------------------------------------------------
+14. Get Users with IPAddress Like Pattern
+
+select g.Username, g.IpAddress
+from Users g
+where g.IpAddress like '___.1%.%.___'
+order by g.Username
+
+--------------------------------------------------------------------------------------------
+15. Show All Games with Duration
+
+select g.Name,
+	case
+		when datepart(hour, g.Start) between 0 and 11 then 'Morning'
+		when datepart(hour, g.Start) between 12 and 17 then 'Afternoon'
+		when datepart(hour, g.Start) between 18 and 23 then 'Evening'
+	end as 'Parts of the day',
+	case
+		when g.Duration <= 3 then 'Extra Short'
+		when g.Duration between 4 and 6 then 'Short'
+		when g.Duration is null then 'Extra Long'
+		else 'Long'
+	end as 'Duration'
+from Games g
+order by g.Name, 'Duration', 'Parts of the day'
+
+--------------------------------------------------------------------------------------------
+16. Orders Table
+
+select g.ProductName
+	,g.OrderDate
+	,dateadd(day, 3, g.OrderDate) as 'Pay Due'
+	,dateadd(month, 1, g.OrderDate) as 'Deliver Due'
+from Orders g
+
+--------------------------------------------------------------------------------------------
+17. People Age
+
+select e.FirstName, datediff(year, e.HireDate, GETDATE()) as 'Age in Years',
+		datediff(month, e.HireDate, getdate()) as 'Age in Months',
+			DATEDIFF(day, e.HireDate, getdate()) as 'Age in Days',
+				DATEDIFF(minute, e.HireDate, getdate()) as 'Age in Minutes'
+from SoftUni.dbo.Employees e
+
+--------------------------------------------------------------------------------------------
