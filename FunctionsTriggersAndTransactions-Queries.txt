@@ -1,0 +1,243 @@
+01. Employees with Salary Above 35000
+
+CREATE PROCEDURE usp_GetEmployeesSalaryAbove35000
+	   AS(
+SELECT e.FirstName, e.LastName
+    FROM Employees e
+    WHERE e.Salary > 35000)
+
+------------------------------------------------------------------------------
+02. Employees with Salary Above Number
+
+CREATE PROCEDURE usp_GetEmployeesSalaryAboveNumber
+	   @InputSalary MONEY = 0
+	AS
+ BEGIN 
+SELECT e.FirstName, e.LastName
+  FROM Employees e
+ WHERE e.Salary >= @InputSalary
+   END
+  
+------------------------------------------------------------------------------
+03. Town Names Starting With
+
+CREATE PROC usp_GetTownsStartingWith(
+	   @str VARCHAR(20))
+	AS 
+ BEGIN
+SELECT t.Name
+  FROM Towns t
+ WHERE t.Name LIKE @str + '%'
+   END
+   
+------------------------------------------------------------------------------
+04. Employees from Town
+
+CREATE PROC [dbo].[usp_GetEmployeesFromTown](
+	   @TownName VARCHAR(50))
+	   AS
+	   BEGIN
+		   SELECT e.FirstName, e.LastName
+		   FROM Employees e
+		   INNER JOIN Addresses a
+		   ON a.AddressID = e.AddressID
+		   INNER JOIN Towns t
+		   ON t.TownID = a.TownID
+		   WHERE t.Name = @TownName
+	   END
+
+------------------------------------------------------------------------------
+05. Salary Level Function
+
+CREATE FUNCTION ufn_GetSalaryLevel(@salary MONEY)
+	   RETURNS VARCHAR(20)
+	   AS BEGIN
+	   RETURN
+			CASE
+				WHEN @salary < 30000 THEN 'Low'
+				WHEN @salary BETWEEN 30000 AND 50000 THEN 'Average'
+				WHEN @salary > 50000 THEN 'High'
+				ELSE NULL
+			END
+	   END
+	   
+------------------------------------------------------------------------------
+07. Define Function
+
+CREATE FUNCTION ufn_IsWordComprised(@setOfLetters NVARCHAR(250), @word NVARCHAR(250))
+		RETURNS BIT
+		AS BEGIN
+			DECLARE @count SMALLINT = 1
+			DECLARE @indexChar SMALLINT = 1
+			DECLARE @check BIT = 1
+			DECLARE @innercheck BIT = 0
+			WHILE @count <= LEN(@word)
+				BEGIN
+					DECLARE @lo CHAR
+					SET @lo = SUBSTRING(@word, @count, 1)
+						WHILE @indexChar <= LEN(@setOfLetters)
+						BEGIN					
+							DECLARE @lt CHAR						
+							SET @lt = SUBSTRING(@setOfLetters, @indexChar, 1)
+							IF UPPER(@lo) LIKE UPPER(@lt)
+								BEGIN
+									SET @innercheck = 1
+									BREAK
+								END
+							ELSE
+								BEGIN
+									SET @indexChar += 1
+								END
+						END
+					IF @innercheck = 1
+						BEGIN
+							SET @innercheck = 0
+							SET @indexChar = 1
+							SET @count += 1
+						END
+					ELSE
+						BEGIN
+							SET @check = 0
+							BREAK
+						END
+					
+				END
+
+			IF @check = 1
+				BEGIN
+					RETURN 1
+				END
+			ELSE
+				BEGIN
+					RETURN 0
+				END
+			RETURN NULL
+		END
+		
+------------------------------------------------------------------------------
+09. Find Full Name
+
+CREATE PROC usp_GetHoldersFullName
+	AS
+	BEGIN
+		SELECT a.FirstName + ' ' + a.LastName AS [Full Name]
+		FROM AccountHolders a
+	END
+
+------------------------------------------------------------------------------
+10. People with Balance Higher Than
+
+CREATE PROC usp_GetHoldersWithBalanceHigherThan(
+	@number MONEY = 0)
+	AS
+	BEGIN
+		SELECT ah.FirstName, ah.LastName
+        FROM AccountHolders ah
+        LEFT JOIN Accounts a
+        ON ah.Id = a.AccountHolderID
+        GROUP BY ah.FirstName, ah.LastName
+        HAVING SUM(a.Balance) > @number
+	END
+	
+------------------------------------------------------------------------------
+11. Future Value Function
+
+CREATE FUNCTION ufn_CalculateFutureValue(@I MONEY, @R FLOAT, @T INT)
+	RETURNS MONEY
+	AS BEGIN
+		RETURN @I * (POWER((1 + @R), @T))
+	END
+	
+------------------------------------------------------------------------------
+13. Deposit Money Procedure
+
+CREATE PROC usp_DepositMoney(@AccountId INT, @moneyAmount MONEY)
+	   AS
+	   BEGIN
+			DECLARE @temp MONEY = (SELECT a.Balance FROM dbo.Accounts a WHERE a.Id = @AccountId)
+
+			BEGIN TRAN
+				IF(@temp IS NULL)
+				BEGIN
+					ROLLBACK
+				END
+				ELSE
+				BEGIN
+					UPDATE dbo.Accounts
+					SET Balance += @moneyAmount
+					WHERE Id = @AccountId
+					COMMIT
+				END
+	   END
+	   
+------------------------------------------------------------------------------
+14. Withdraw Money Procedure
+
+CREATE PROC usp_WithdrawMoney(@AccountId INT, @moneyAmount MONEY)
+	   AS
+	   BEGIN
+			DECLARE @temp MONEY = (SELECT a.Balance FROM dbo.Accounts a WHERE a.Id = @AccountId)
+
+			BEGIN TRAN
+				IF(@temp < @moneyAmount)
+				BEGIN
+					ROLLBACK
+				END
+				ELSE
+				BEGIN
+					UPDATE dbo.Accounts
+					SET Balance -= @moneyAmount
+					WHERE Id = @AccountId
+					COMMIT
+				END
+	   END
+	   
+------------------------------------------------------------------------------
+18. Cash in User Games Odd Rows
+
+CREATE FUNCTION ufn_CashInUsersGames(@GameName VARCHAR(MAX))
+	RETURNS @TEMP TABLE(SumCash MONEY)
+	AS BEGIN
+			DECLARE @MyTABLE TABLE (SumCash MONEY)
+			INSERT INTO @MyTABLE
+			SELECT SUM(OddRowsTable.Cash) FROM
+					(SELECT *, ROW_NUMBER() OVER(ORDER BY Cash DESC) AS r FROM
+					(SELECT g.Name, ug.Cash, u.Username
+						FROM Games g
+						INNER JOIN UsersGames ug
+						ON ug.GameId = g.Id
+						INNER JOIN Users u
+						ON u.Id = ug.UserId
+						WHERE g.Name = @GameName) AS t) AS OddRowsTable
+						WHERE OddRowsTable.r % 2 = 1
+			INSERT INTO @TEMP
+			SELECT SumCash FROM @MyTABLE
+			RETURN
+	END
+	
+------------------------------------------------------------------------------
+20. Massive Shopping
+
+Select ttt.Name from
+(SELECT table1.Id as [Item], table2.Id as [Game], table1.Name
+  FROM (SELECT [Id]
+		,[Name]
+		,[StatisticId]
+		,[Price]
+		,[MinLevel]
+		FROM [dbo].[Items] i
+		WHERE i.MinLevel IN (11,12)) AS table1
+  CROSS JOIN (SELECT TOP 1000 [Id]
+  FROM [dbo].[UsersGames]
+  WHERE UserId = 9
+  AND GameId = 87) AS table2
+UNION ALL
+SELECT [ItemId]
+      ,[UserGameId], i.Name
+  FROM [dbo].[UserGameItems] ugi
+  INNER JOIN dbo.Items i
+  ON i.Id = ugi.ItemId
+  WHERE UserGameId = 110) as ttt
+  order by ttt.Name
+  
+------------------------------------------------------------------------------
