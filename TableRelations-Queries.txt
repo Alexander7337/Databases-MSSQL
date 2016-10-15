@@ -1,0 +1,402 @@
+01. One-To-One Relationship
+
+CREATE TABLE Persons(
+	PersonID INT NOT NULL,
+	FirstName NVARCHAR(20),
+	Salary SMALLMONEY,
+	PassportID INT
+)
+
+CREATE TABLE Passports(
+	PassportID INT PRIMARY KEY,
+	PassportNumber VARCHAR(8)
+)
+
+INSERT INTO Persons(PersonID, FirstName, Salary, PassportID)
+VALUES (1, 'Roberto', 43300.00, 102)
+INSERT INTO Persons(PersonID, FirstName, Salary, PassportID)
+VALUES (2, 'Tom', 56100.00, 103)
+INSERT INTO Persons(PersonID, FirstName, Salary, PassportID)
+VALUES (3, 'Yana', 60200.00, 101)
+
+INSERT INTO Passports(PassportID, PassportNumber)
+VALUES (101, 'N34FG21B')
+INSERT INTO Passports(PassportID, PassportNumber)
+VALUES (102, 'K65LO4R7')
+INSERT INTO Passports(PassportID, PassportNumber)
+VALUES (103, 'ZE657QP2')
+
+ALTER TABLE dbo.Persons
+ADD CONSTRAINT PK_PersonID PRIMARY KEY (PersonID)
+
+ALTER TABLE dbo.Persons
+ADD CONSTRAINT FK_PassportID FOREIGN KEY (PassportID)
+REFERENCES Passports(PassportID)
+
+------------------------------------------------------------------------------
+02. One-To-Many Relationship
+
+CREATE TABLE Manufacturers(
+	ManufacturerID INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	Name varchar(10),
+	EstablishedOn smalldatetime
+)
+
+CREATE TABLE Models(
+	ModelID INT IDENTITY(101,1) PRIMARY KEY NOT NULL,
+	Name varchar(10),
+	ManufacturerID INT NOT NULL REFERENCES Manufacturers(ManufacturerID)
+)
+
+INSERT INTO Manufacturers(Name, EstablishedOn)
+VALUES ('BMW', '1916-03-07')
+INSERT INTO Manufacturers(Name, EstablishedOn)
+VALUES ('Tesla', '2003-01-01')
+INSERT INTO Manufacturers(Name, EstablishedOn)
+VALUES ('Lada', '1966-05-01')
+
+INSERT INTO Models(Name, ManufacturerID)
+VALUES ('X1', 1)
+INSERT INTO Models(Name, ManufacturerID)
+VALUES ('i6', 1)
+INSERT INTO Models(Name, ManufacturerID)
+VALUES ('Model S', 2)
+INSERT INTO Models(Name, ManufacturerID)
+VALUES ('Model X', 2)
+INSERT INTO Models(Name, ManufacturerID)
+VALUES ('Model 3', 2)
+INSERT INTO Models(Name, ManufacturerID)
+VALUES ('Nova', 3)
+
+------------------------------------------------------------------------------
+03. Many-To-Many Relationship
+
+CREATE TABLE Students(
+	StudentID INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	Name VARCHAR(20),
+)
+
+CREATE TABLE Exams(
+	ExamID INT IDENTITY(101,1) PRIMARY KEY NOT NULL,
+	Name VARCHAR(20)
+)
+
+CREATE TABLE StudentsExams(
+	StudentID INT REFERENCES Students(StudentID) NOT NULL,
+	ExamID INT REFERENCES Exams(ExamID) NOT NULL
+)
+
+ALTER TABLE StudentsExams
+ADD CONSTRAINT PK_StudentsExams PRIMARY KEY (StudentID, ExamID)
+
+INSERT INTO Students(Name) VALUES ('Mila')
+INSERT INTO Students(Name) VALUES ('Toni')
+INSERT INTO Students(Name) VALUES ('Ron')
+
+INSERT INTO Exams(Name) VALUES ('Spring MVC')
+INSERT INTO Exams(Name) VALUES ('Neo4j')
+INSERT INTO Exams(Name) VALUES ('Oracle 11g')
+
+INSERT INTO StudentsExams(StudentID, ExamID) VALUES (1,101)
+INSERT INTO StudentsExams(StudentID, ExamID) VALUES (1, 102)
+INSERT INTO StudentsExams(StudentID, ExamID) VALUES (2, 101)
+INSERT INTO StudentsExams(StudentID, ExamID) VALUES (3, 103)
+INSERT INTO StudentsExams(StudentID, ExamID) VALUES (2, 102)
+INSERT INTO StudentsExams(StudentID, ExamID) VALUES (2, 103)
+
+------------------------------------------------------------------------------
+04. Self-Referencing
+
+CREATE TABLE Teachers(
+	TeacherID INT IDENTITY(101,1) PRIMARY KEY NOT NULL,
+	Name NVARCHAR(20),
+	ManagerID INT,
+
+	CONSTRAINT FK_ManagerID FOREIGN KEY (ManagerID) REFERENCES Teachers(TeacherID)
+)
+
+------------------------------------------------------------------------------
+05. Online Store Database
+
+CREATE TABLE Cities(
+	CityID INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	Name VARCHAR(50)
+)
+
+CREATE TABLE Customers(
+	CustomerID INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	Name VARCHAR(50),
+	Birthday DATE,
+	CityID INT NOT NULL,
+
+	CONSTRAINT FK_CityID FOREIGN KEY(CityID) REFERENCES Cities(CityID)
+)
+
+CREATE TABLE Orders(
+	OrderID INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	CustomerID INT NOT NULL,
+
+	CONSTRAINT FK_CustomerID FOREIGN KEY(CustomerID) REFERENCES Customers(CustomerID)
+)
+
+CREATE TABLE ItemTypes(
+	ItemTypeID INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	Name VARCHAR(50)
+)
+
+CREATE TABLE Items(
+	ItemID INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
+	Name VARCHAR(50),
+	ItemTypeID INT NOT NULL,
+
+	CONSTRAINT FK_ItemTypeID FOREIGN KEY(ItemTypeID) REFERENCES ItemTypes(ItemTypeID)
+)
+
+CREATE TABLE OrderItems(
+	OrderID INT NOT NULL REFERENCES Orders(OrderID),
+	ItemID INT NOT NULL REFERENCES Items(ItemID)
+)
+
+ALTER TABLE OrderItems
+ADD CONSTRAINT PK_Group PRIMARY KEY(OrderID, ItemID)
+
+------------------------------------------------------------------------------
+06. University Database
+
+CREATE TABLE Students
+(
+	StudentID INT PRIMARY KEY,
+	StudentNumber VARCHAR(50) NOT NULL,
+	StudentName VARCHAR(50) NOT NULL,
+	MajorID INT NOT NULL
+)
+
+CREATE TABLE Majors
+(
+	MajorID INT PRIMARY KEY,
+	[Name] VARCHAR(50) NOT NULL
+)
+
+CREATE TABLE Payments
+(
+	PaymentID INT PRIMARY KEY,
+	PaymentDate DATE NOT NULL,
+	PaymentAmount FLOAT NOT NULL,
+	StudentID INT NOT NULL UNIQUE
+)
+
+CREATE TABLE Agenda
+(
+	StudentID INT NOT NULL,			
+	SubjectID INT NOT NULL,			
+	CONSTRAINT PK_Agenda PRIMARY KEY (StudentID, SubjectID)
+)
+
+CREATE TABLE Subjects
+(
+	SubjectID INT PRIMARY KEY,
+	SubjectName VARCHAR(50)
+)
+
+ALTER TABLE Agenda
+ADD CONSTRAINT FK_Agenda_Students FOREIGN KEY (StudentID)
+REFERENCES Students(StudentID)
+
+ALTER TABLE Agenda
+ADD CONSTRAINT FK_Agenda_Subjects FOREIGN KEY (SubjectID)
+REFERENCES Subjects(SubjectID)
+
+ALTER TABLE Students
+ADD CONSTRAINT FK_Students_Majors FOREIGN KEY (MajorID)
+REFERENCES Majors(MajorID)
+
+ALTER TABLE Payments
+ADD CONSTRAINT FK_Payments_Students FOREIGN KEY (StudentID)
+REFERENCES Students(StudentID)
+
+------------------------------------------------------------------------------
+09. Employee Address
+
+SELECT TOP 5 e.EmployeeID, e.JobTitle, e.AddressID, a.AddressText
+  FROM Employees e 
+  INNER JOIN Addresses a 
+  ON e.AddressID = a.AddressID
+  ORDER BY e.AddressID
+  
+------------------------------------------------------------------------------
+10. Employee Departments
+
+SELECT TOP 5 e.EmployeeID, e.FirstName, e.Salary, d.Name
+  FROM Employees e 
+  INNER JOIN Departments d 
+  ON e.DepartmentID = d.DepartmentID
+  WHERE e.Salary > 15000
+  ORDER BY e.DepartmentID
+  
+------------------------------------------------------------------------------
+11. Employees Without Projects
+
+SELECT TOP 3 e.EmployeeID, e.FirstName
+  FROM Employees e 
+  LEFT JOIN EmployeesProjects p 
+  ON e.EmployeeID = p.EmployeeID
+  WHERE p.ProjectID IS NULL
+  ORDER BY e.EmployeeID
+ 
+------------------------------------------------------------------------------
+12. Employees With Project
+
+SELECT TOP 5 e.EmployeeID, e.FirstName, n.Name
+  FROM Employees e 
+  JOIN EmployeesProjects p 
+  ON e.EmployeeID = p.EmployeeID
+  JOIN Projects n
+  ON p.ProjectID = n.ProjectID
+  WHERE n.StartDate > '2002-08-13' AND n.EndDate IS NULL
+  ORDER BY e.EmployeeID
+ 
+------------------------------------------------------------------------------
+13. Employee 24
+
+SELECT e.EmployeeID, e.FirstName, 
+  CASE
+		WHEN n.StartDate > '2005' THEN NULL
+		ELSE n.Name
+  END  AS ProjectName
+  FROM Employees e 
+  JOIN EmployeesProjects p 
+  ON e.EmployeeID = p.EmployeeID
+  JOIN Projects n
+  ON p.ProjectID = n.ProjectID
+  WHERE e.EmployeeID = 24
+  ORDER BY e.EmployeeID
+  
+------------------------------------------------------------------------------
+ 14. Employee Manager
+
+ SELECT e.EmployeeID, e.FirstName, e.ManagerID, m.FirstName
+  FROM Employees e 
+  JOIN Employees m
+  ON e.ManagerID = m.EmployeeID
+  WHERE e.ManagerID = 3 OR e.ManagerID = 7
+  ORDER BY e.EmployeeID
+  
+------------------------------------------------------------------------------
+15. Highest Peaks in Bulgaria
+
+SELECT c.CountryCode, m.MountainRange, p.PeakName, p.Elevation
+  FROM Countries c 
+  JOIN MountainsCountries mc
+  ON c.CountryCode = mc.CountryCode
+  JOIN Mountains m
+  ON m.Id = mc.MountainId
+  JOIN Peaks p
+  ON p.MountainId = m.Id
+  WHERE c.CountryCode = 'BG' AND p.Elevation > 2835
+  ORDER BY p.Elevation DESC
+
+------------------------------------------------------------------------------
+16. Count Mountain Ranges
+
+SELECT c.CountryCode, COUNT(m.MountainRange) AS MountainRanges
+  FROM Countries c 
+  JOIN MountainsCountries mc
+  ON c.CountryCode = mc.CountryCode
+  JOIN Mountains m
+  ON m.Id = mc.MountainId
+  WHERE c.CountryCode = 'BG' OR c.CountryCode = 'US' OR c.CountryCode = 'RU'
+  GROUP BY c.CountryCode
+
+------------------------------------------------------------------------------
+17. Countries With or Without Rivers
+
+SELECT TOP 5 c.CountryName, r.RiverName
+  FROM Countries c
+  FULL JOIN Continents co
+  ON co.ContinentCode = c.ContinentCode
+  FULL JOIN CountriesRivers cr
+  ON c.CountryCode = cr.CountryCode
+  FULL JOIN Rivers r
+  ON r.Id = cr.RiverId
+  WHERE co.ContinentName = 'Africa'
+  ORDER BY c.CountryName
+ 
+------------------------------------------------------------------------------
+18. Continents and Currencies
+
+SELECT c.ContinentCode, c.CurrencyCode, COUNT(c.CurrencyCode) AS [Currency]
+		FROM Countries c
+		GROUP BY c.ContinentCode, c.CurrencyCode
+		HAVING COUNT(c.CurrencyCode) >= ALL(
+										SELECT COUNT(cc.CurrencyCode)
+										FROM Countries cc
+										WHERE cc.ContinentCode = c.ContinentCode
+										GROUP BY cc.ContinentCode, cc.CurrencyCode)
+		AND
+					COUNT(c.CurrencyCode) > 1
+		ORDER BY c.ContinentCode	
+		
+------------------------------------------------------------------------------
+19. Countries Without any Mountains
+
+SELECT COUNT(c.CountryCode) AS CountryCode
+	FROM Countries c
+	FULL JOIN MountainsCountries mc
+	ON mc.CountryCode = c.CountryCode
+	FULL JOIN Mountains m
+	ON m.Id = mc.MountainId
+	WHERE mc.MountainId IS NULL
+	
+------------------------------------------------------------------------------
+20. Highest Peak and Longest River by Country
+
+SELECT TOP 5 c.CountryName, MAX(p.Elevation) AS HighestPeakElevation, MAX(r.Length) AS LongestRiverLength	
+	FROM Countries c
+	FULL JOIN MountainsCountries mc
+	ON mc.CountryCode = c.CountryCode
+	FULL JOIN Mountains m
+	ON m.Id = mc.MountainId
+	FULL JOIN Peaks p
+	ON p.MountainId = m.Id
+	FULL JOIN CountriesRivers cr
+	ON cr.CountryCode = c.CountryCode
+	FULL JOIN Rivers r
+	ON r.Id = cr.RiverId
+	GROUP BY c.CountryName
+	ORDER BY HighestPeakElevation DESC, LongestRiverLength	DESC, c.CountryName
+	
+------------------------------------------------------------------------------
+21. Highest Peak Name and Elevation by Country
+
+WITH MyTable AS(
+	SELECT c.CountryName, p.PeakName, p.Elevation, m.MountainRange
+	  FROM Countries c
+	  LEFT JOIN MountainsCountries
+		ON c.CountryCode = MountainsCountries.CountryCode
+	  LEFT JOIN Mountains m
+		ON m.Id = MountainsCountries.MountainId
+	  LEFT JOIN Peaks p
+		ON p.MountainId = m.Id)
+
+SELECT TOP 5
+	  CountryName,
+      PeakName = CASE 
+					WHEN PeakName IS NULL THEN '(no highest peak)'
+					ELSE PeakName 
+				 END,
+	  Elevation = CASE
+	                WHEN Elevation = 0 OR Elevation IS NULL THEN 0
+					ELSE Elevation
+				  END,
+	  MountainsRange = CASE
+						WHEN MountainRange IS NULL THEN '(no mountain)'
+						ELSE MountainRange
+					   END
+	  
+  FROM(
+	SELECT CountryName, PeakName, Elevation, MountainRange, RANK() OVER (PARTITION BY CountryName ORDER BY MyTable.Elevation DESC) AS Rnk
+		FROM MyTable) AS t
+ WHERE t.Rnk = 1
+ ORDER BY CountryName, MountainRange
+ 
+------------------------------------------------------------------------------
