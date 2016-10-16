@@ -241,3 +241,306 @@ SELECT [ItemId]
   order by ttt.Name
   
 ------------------------------------------------------------------------------
+21. Number of Users for Email Provider
+
+SELECT tbl.[Email Provider], COUNT(tbl.[Email Provider]) AS [Number Of Users]
+  FROM(
+  SELECT SUBSTRING(u.Email, CHARINDEX('@', u.Email) + 1, LEN(u.Email)) AS [Email Provider]
+  FROM Users u) AS tbl
+  GROUP BY tbl.[Email Provider]
+  ORDER BY [Number Of Users] DESC, tbl.[Email Provider]
+
+------------------------------------------------------------------------------
+22. All Users in Games
+
+SELECT  g.Name, gt.Name, u.Username, ug.Level, ug.Cash, ch.Name
+    FROM dbo.Users u
+	LEFT JOIN dbo.UsersGames ug
+	ON u.Id = ug.UserId
+	INNER JOIN dbo.Games g
+	ON g.Id = ug.GameId
+	INNER JOIN dbo.GameTypes gt
+	ON gt.Id = g.GameTypeId
+	LEFT JOIN dbo.Characters ch
+	ON ch.Id = ug.CharacterId
+	ORDER BY Level DESC, Username, g.Name
+
+------------------------------------------------------------------------------
+23. Users in Games with Their Items
+
+SELECT *
+  FROM(
+	SELECT  u.Username, g.Name, COUNT(i.Name) AS [Items Count], SUM(i.Price) AS [Items Price]
+		FROM dbo.Users u
+		LEFT JOIN dbo.UsersGames ug
+		ON u.Id = ug.UserId
+		LEFT JOIN dbo.Games g
+		ON g.Id = ug.GameId
+		LEFT JOIN dbo.UserGameItems ugi
+		ON ugi.UserGameId = ug.Id
+		LEFT JOIN dbo.Items i
+		ON i.Id = ugi.ItemId
+		GROUP BY u.Username, g.Name) AS tbl
+  WHERE tbl.[Items Count] >= 10
+  ORDER BY [Items Count] DESC, [Items Price] DESC, Username
+
+------------------------------------------------------------------------------
+24. * User in Games with Their Statistics
+
+SELECT u.Username,
+	   g.Name AS [Game],
+	   MAX(ch.Name) AS [Character],
+	   SUM(ist.Strength) + MAX(st.Strength) + MAX(chst.Strength) AS [Strength],
+	   SUM(ist.Defence) + MAX(st.Defence) + MAX(chst.Defence) AS [Defence],
+	   SUM(ist.Speed) + MAX(st.Speed) + MAX(chst.Speed) AS [Speed],
+	   SUM(ist.Mind) + MAX(st.Mind) + MAX(chst.Mind) AS [Mind],
+	   SUM(ist.Luck) + MAX(st.Luck) + MAX(chst.Luck) AS [Luck]
+	FROM dbo.Users u
+	INNER JOIN dbo.UsersGames ug
+	ON u.Id = ug.UserId
+	INNER JOIN dbo.Games g
+	ON ug.GameId = g.Id
+	INNER JOIN dbo.GameTypes gt
+	ON gt.Id = g.GameTypeId
+	INNER JOIN dbo.[Statistics] st
+	ON gt.BonusStatsId = st.Id
+	INNER JOIN dbo.Characters ch
+	ON ug.CharacterId = ch.Id
+	INNER JOIN dbo.[Statistics] chst
+	ON ch.StatisticId = chst.Id
+	INNER JOIN dbo.UserGameItems ugi
+	ON ugi.UserGameId = ug.Id
+	INNER JOIN dbo.Items i
+	ON ugi.ItemId = i.Id
+	INNER JOIN dbo.[Statistics] ist
+	ON i.StatisticId = ist.Id
+	GROUP BY u.Username, g.Name
+	ORDER BY Strength DESC, Defence DESC, Speed DESC, Mind DESC, Luck DESC
+
+------------------------------------------------------------------------------
+25. All Items with Greater than Average Statistics
+
+	SELECT i.Name, i.Price, i.MinLevel, stats.Strength, stats.Defence, stats.Speed, stats.Luck, stats.Mind
+		FROM dbo.Items i
+		LEFT JOIN dbo.ItemTypes it
+		ON it.Id = i.ItemTypeId
+		LEFT JOIN dbo.[Statistics] stats
+		ON i.StatisticId = stats.Id
+		WHERE stats.Mind > ALL(SELECT AVG(stats.Mind) AS [Mind]
+								FROM dbo.Items i
+								LEFT JOIN dbo.ItemTypes it
+								ON it.Id = i.ItemTypeId
+								LEFT JOIN dbo.[Statistics] stats
+								ON i.StatisticId = stats.Id)
+		AND stats.Luck > ALL(SELECT AVG(stats.Luck) AS [Luck]
+								FROM dbo.Items i
+								LEFT JOIN dbo.ItemTypes it
+								ON it.Id = i.ItemTypeId
+								LEFT JOIN dbo.[Statistics] stats
+								ON i.StatisticId = stats.Id)
+		AND stats.Speed > ALL(SELECT AVG(stats.Speed) AS [Speed]
+								FROM dbo.Items i
+								LEFT JOIN dbo.ItemTypes it
+								ON it.Id = i.ItemTypeId
+								LEFT JOIN dbo.[Statistics] stats
+								ON i.StatisticId = stats.Id)
+		ORDER BY I.Name
+
+------------------------------------------------------------------------------
+26. Display All Items about Forbidden Game Type
+
+SELECT i.Name, i.Price, i.MinLevel, gt.Name
+	FROM dbo.Items i
+	FULL JOIN dbo.GameTypeForbiddenItems gtfi
+	ON i.Id = gtfi.ItemId
+	Full JOIN dbo.GameTypes gt
+	ON gt.Id = gtfi.GameTypeId
+	ORDER BY gt.Name DESC, i.Name
+
+------------------------------------------------------------------------------
+27. Buy Items for User in Game
+
+INSERT INTO dbo.UserGameItems(ItemId, UserGameId)
+VALUES (51, 235), (71, 235), (157, 235), (184, 235), (197, 235), (223, 235)
+UPDATE dbo.UsersGames
+SET Cash -= 2957
+WHERE UserId = 5 AND GameId = 221
+  
+SELECT u.Username, g.Name, ug.Cash, i.Name
+    FROM dbo.Users u
+	LEFT JOIN dbo.UsersGames ug
+	ON ug.UserId = u.Id
+	INNER JOIN dbo.Games g
+	ON g.Id = ug.GameId
+	INNER JOIN dbo.UserGameItems ugi
+	ON ugi.UserGameId = ug.Id
+	INNER JOIN dbo.Items i
+	ON i.Id = ugi.ItemId
+	WHERE ug.GameId = 221
+	ORDER BY i.Name
+
+------------------------------------------------------------------------------
+28. Peaks and Mountains
+
+SELECT p.PeakName, m.MountainRange, p.Elevation
+    FROM Mountains m
+	INNER JOIN Peaks p
+	ON p.MountainId = m.Id
+	ORDER BY p.Elevation DESC, p.PeakName
+
+------------------------------------------------------------------------------
+29. Peaks with Mountain, Country and Continent
+
+SELECT p.PeakName, m.MountainRange, c.CountryName, co.ContinentName
+	FROM Countries c
+	INNER JOIN MountainsCountries mc
+	ON mc.CountryCode = c.CountryCode
+	INNER JOIN Mountains m
+	ON m.Id = mc.MountainId
+	INNER JOIN Peaks p
+	ON p.MountainId = m.Id
+	INNER JOIN Continents co
+	ON co.ContinentCode = c.ContinentCode
+	ORDER BY p.PeakName, c.CountryName
+
+------------------------------------------------------------------------------
+30. Rivers by Country
+
+SELECT finalTable.CountryName,
+	finalTable.ContinentName,
+	finalTable.RiversCount,
+	CASE
+		WHEN finalTable.TotalLength IS NULL THEN 0
+		ELSE finalTable.TotalLength
+	END AS [TotalLength]
+    FROM(
+		SELECT 
+		t.CountryName
+		,t.ContinentName
+		,COUNT(t.Id) AS [RiversCount]
+		,SUM(t.Length) AS [TotalLength]
+    FROM(
+		SELECT c.CountryName, co.ContinentName, r.Id, r.Length
+			FROM Countries c
+			LEFT JOIN CountriesRivers cr
+			ON cr.CountryCode = c.CountryCode
+			LEFT JOIN Rivers r
+			ON r.Id = cr.RiverId
+			LEFT JOIN Continents co
+			ON co.ContinentCode = c.ContinentCode) AS t
+    GROUP BY t.CountryName, t.ContinentName) AS finalTable
+	ORDER BY finalTable.RiversCount DESC, finalTable.TotalLength DESC, finalTable.CountryName
+
+------------------------------------------------------------------------------
+30. Rivers by Country
+
+SELECT c.CountryName
+		,co.ContinentName
+		,COUNT(r.Id) AS [RiversCount]
+		,CASE
+			WHEN SUM(r.Length) IS NULL THEN 0
+			ELSE SUM(r.Length)
+		END AS [TotalLength]
+	FROM dbo.Countries c
+	LEFT JOIN dbo.CountriesRivers cr
+	ON c.CountryCode = cr.CountryCode
+	LEFT JOIN dbo.Rivers r
+	ON cr.RiverId = r.Id
+	INNER JOIN dbo.Continents co
+	ON c.ContinentCode = co.ContinentCode
+	GROUP BY c.CountryCode, c.CountryName, co.ContinentCode, co.ContinentName
+	ORDER BY [RiversCount] DESC, [TotalLength] DESC, c.[CountryName]
+
+------------------------------------------------------------------------------
+31. Count of Countries by Currency
+
+SELECT cu.CurrencyCode, cu.[Description] AS [Currency], COUNT(c.CountryName) AS [NumberOfCountries]
+    FROM dbo.Currencies cu
+	LEFT JOIN dbo.Countries c
+	ON c.CurrencyCode = cu.CurrencyCode
+	GROUP BY cu.CurrencyCode, cu.[Description]
+	ORDER BY [NumberOfCountries] DESC, cu.[Description]
+
+------------------------------------------------------------------------------
+32. Population and Area by Continent
+
+SELECT co.ContinentName, SUM(CONVERT(BIGINT,c.AreaInSqKm)) AS [CountriesArea], SUM(CONVERT(BIGINT, c.[Population])) AS [CountriesPopulation]
+    FROM dbo.Continents co
+	INNER JOIN dbo.Countries c
+	ON c.ContinentCode = co.ContinentCode
+	GROUP BY co.ContinentName
+	ORDER BY [CountriesPopulation] DESC
+
+------------------------------------------------------------------------------
+33. Monasteries by Country
+
+CREATE TABLE Monasteries(
+	Id INT IDENTITY(1,1) PRIMARY KEY,
+	[Name] VARCHAR(MAX),
+	CountryCode CHAR(2)
+
+	CONSTRAINT FK_Monasteries_Countries FOREIGN KEY(CountryCode) REFERENCES Countries(CountryCode)
+)
+  
+INSERT INTO Monasteries(Name, CountryCode) VALUES
+('Rila Monastery “St. Ivan of Rila”', 'BG'), 
+('Bachkovo Monastery “Virgin Mary”', 'BG'),
+('Troyan Monastery “Holy Mother''s Assumption”', 'BG'),
+('Kopan Monastery', 'NP'),
+('Thrangu Tashi Yangtse Monastery', 'NP'),
+('Shechen Tennyi Dargyeling Monastery', 'NP'),
+('Benchen Monastery', 'NP'),
+('Southern Shaolin Monastery', 'CN'),
+('Dabei Monastery', 'CN'),
+('Wa Sau Toi', 'CN'),
+('Lhunshigyia Monastery', 'CN'),
+('Rakya Monastery', 'CN'),
+('Monasteries of Meteora', 'GR'),
+('The Holy Monastery of Stavronikita', 'GR'),
+('Taung Kalat Monastery', 'MM'),
+('Pa-Auk Forest Monastery', 'MM'),
+('Taktsang Palphug Monastery', 'BT'),
+('Sümela Monastery', 'TR')
+
+UPDATE dbo.Countries
+SET IsDeleted = 1
+WHERE CountryName IN (SELECT c.CountryName
+				FROM dbo.Countries c
+				LEFT JOIN dbo.CountriesRivers cr
+				ON cr.CountryCode = c.CountryCode
+				INNER JOIN dbo.Rivers r
+				ON r.Id = cr.RiverId
+				GROUP BY c.CountryName
+				HAVING COUNT(r.RiverName) > 3)
+
+SELECT m.Name, c.CountryName
+    FROM dbo.Countries c
+	JOIN dbo.Monasteries m
+	ON m.CountryCode = c.CountryCode
+	WHERE c.IsDeleted = 0
+	ORDER BY m.Name
+
+------------------------------------------------------------------------------
+34. Monasteries by Continents and Countries
+
+UPDATE dbo.Countries
+SET CountryName = 'Burma'
+WHERE CountryName = 'Myanmar'
+
+INSERT INTO dbo.Monasteries(Name, CountryCode)
+VALUES('Hanga Abbey', 'TZ')
+
+
+SELECT co.ContinentName
+	   ,c.CountryName
+	   ,COUNT(m.Name) AS [MonasteriesCount]			
+    FROM dbo.Continents co
+	LEFT JOIN dbo.Countries c
+	ON c.ContinentCode = co.ContinentCode
+	LEFT JOIN dbo.Monasteries m
+	ON c.CountryCode = m.CountryCode
+	WHERE c.IsDeleted = 0
+	GROUP BY c.CountryName, co.ContinentName
+	ORDER BY [MonasteriesCount] DESC, c.CountryName
+
+------------------------------------------------------------------------------
