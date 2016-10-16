@@ -1,0 +1,318 @@
+Section 1: DDL
+
+CREATE TABLE DepositTypes(
+	DepositTypeID INT PRIMARY KEY,
+	[Name] VARCHAR(20)
+)
+
+CREATE TABLE Deposits(
+	DepositID INT IDENTITY(1,1) PRIMARY KEY,
+	Amount DECIMAL(10,2),
+	StartDate DATE,
+	EndDate DATE,
+	DepositTypeID INT,
+	CustomerID INT
+
+	CONSTRAINT FK_Deposits_DepositTypes FOREIGN KEY(DepositTypeID) REFERENCES DepositTypes(DepositTypeID),
+	CONSTRAINT FK_Deposits_Customers FOREIGN KEY(CustomerID) REFERENCES Customers(CustomerID)
+)
+
+CREATE TABLE EmployeesDeposits(
+	EmployeeID INT NOT NULL,
+	DepositID INT NOT NULL,
+
+)
+
+ALTER TABLE EmployeesDeposits
+ADD CONSTRAINT PK_EmployeeDeposit PRIMARY KEY(EmployeeID, DepositID),
+CONSTRAINT FK_EmployeesDeposits_Employee FOREIGN KEY(EmployeeID) REFERENCES Employees(EmployeeID),
+CONSTRAINT FK_EmployeesDeposits_Deposits FOREIGN KEY(DepositID) REFERENCES Deposits(DepositID)
+
+CREATE TABLE CreditHistory(
+	CreditHistoryID INT PRIMARY KEY,
+	Mark CHAR(1),
+	StartDate DATE,
+	EndDate DATE,
+	CustomerID INT,
+
+	CONSTRAINT FK_CreditHistory_Customers FOREIGN KEY(CustomerID) REFERENCES Customers(CustomerID)
+)
+
+CREATE TABLE Payments(
+	PayementID INT PRIMARY KEY,
+	[Date] DATE,
+	Amount DECIMAL(10,2),
+	LoanID INT,
+
+	CONSTRAINT FK_Payments_Loans FOREIGN KEY(LoanID) REFERENCES Loans(LoanID)
+)
+
+CREATE TABLE Users(
+	UserID INT PRIMARY KEY,
+	UserName VARCHAR(20),
+	Password VARCHAR(20),
+	CustomerID INT UNIQUE,
+
+	CONSTRAINT FK_Users_Customers FOREIGN KEY(CustomerID) REFERENCES Customers(CustomerID)
+)
+
+ALTER TABLE Employees
+ADD ManagerID INT
+CONSTRAINT FK_Employees_Employees FOREIGN KEY(ManagerID) REFERENCES Employees(EmployeeID)
+
+------------------------------------------------------------------------------
+Section 2: DML - P01. Inserts
+
+INSERT INTO dbo.DepositTypes(DepositTypeID, DepositName)
+VALUES(1,'Time Deposit'),(2, 'Call Deposit'),(3, 'Free Deposit')
+
+INSERT INTO dbo.Deposits(Amount, StartDate, DepositTypeID, CustomerID)
+SELECT Amount, StartDate, DepositType, Customers2.CustomerID FROM(
+(SELECT c.CustomerID
+    FROM dbo.Customers c
+	WHERE c.CustomerID < 20) AS Customers2
+	LEFT JOIN 
+(SELECT c.CustomerID,
+	CASE
+		WHEN YEAR(c.DateOfBirth) < 1980 AND c.Gender = 'M' THEN 1600
+		WHEN YEAR(c.DateOfBirth) < 1980 AND c.Gender = 'F' THEN 1700
+		WHEN YEAR(c.DateOfBirth) >= 1980 AND c.Gender = 'M' THEN 1100
+		ELSE 1200
+	END AS [Amount]
+	FROM dbo.Customers c
+	WHERE c.CustomerID < 20) AS Deposit2
+	ON Customers2.CustomerID = Deposit2.CustomerID
+	LEFT JOIN
+(SELECT c.CustomerID,
+	CASE
+		WHEN c.CustomerID <= 15 AND c.CustomerID % 2 = 1 THEN 1
+		WHEN c.CustomerID <= 15 AND c.CustomerID % 2 = 0 THEN 2
+		ELSE 3
+	END AS [DepositType]
+	FROM dbo.Customers c
+	WHERE c.CustomerID < 20) AS DepositType2
+	ON Customers2.CustomerID = DepositType2.CustomerID
+	LEFT JOIN
+(SELECT c.CustomerID, CONVERT(DATE, GETDATE()) AS [StartDate]
+	FROM dbo.Customers c
+	WHERE c.CustomerID < 20) AS StartDate2
+	ON Customers2.CustomerID = StartDate2.CustomerID)
+
+INSERT INTO dbo.EmployeesDeposits(EmployeeID, DepositID)
+VALUES(15,4),(20,15),(8,7),(4,8),(3,13),(3,8),(4,10),(10,1),(13,4),(14,9)
+
+------------------------------------------------------------------------------
+Section 2: DML - P02. Update
+
+UPDATE dbo.Employees
+SET ManagerID = CASE
+					WHEN EmployeeID BETWEEN 2 AND 10 THEN 1
+					WHEN EmployeeID BETWEEN 12 AND 20 THEN 11
+					WHEN EmployeeID BETWEEN 22 AND 30 THEN 21
+					WHEN EmployeeID IN (11,21) THEN 1
+				END
+				
+------------------------------------------------------------------------------
+Section 2: DML - P03. Delete
+
+DELETE FROM dbo.EmployeesDeposits
+WHERE DepositID = 9 OR EmployeeID = 3
+
+------------------------------------------------------------------------------
+Section 3: Querying - P01. Employees’ Salary
+
+SELECT e.EmployeeID, e.HireDate, e.Salary, e.BranchID
+	FROM dbo.Employees e
+	WHERE e.Salary > 2000 AND e.HireDate > '20090615'
+	
+------------------------------------------------------------------------------
+Section 3: Querying - P02. Customer Age
+
+SELECT c.FirstName, c.DateOfBirth, DATEDIFF(YEAR, c.DateOfBirth, '20161001') AS [Age]
+	FROM dbo.Customers c
+	WHERE DATEDIFF(YEAR, c.DateOfBirth, '20161001') BETWEEN 40 AND 50
+	
+------------------------------------------------------------------------------
+Section 3: Querying - P03. Customer City
+
+SELECT c.CustomerID, c.FirstName, c.LastName, c.Gender, ci.CityName
+	FROM dbo.Customers c
+	INNER JOIN dbo.Cities ci
+	On c.CityID = ci.CityID
+	WHERE (c.LastName LIKE 'Bu%' OR c.FirstName LIKE '%a') 
+		  AND LEN(ci.CityName) >= 8
+	ORDER BY c.CustomerID
+	
+------------------------------------------------------------------------------
+Section 3: Querying - P04. Employee Accounts
+
+SELECT TOP 5 e.EmployeeID, e.FirstName, a.AccountNumber
+	FROM dbo.Employees e
+	INNER JOIN dbo.EmployeesAccounts ea
+	ON e.EmployeeID = ea.EmployeeID
+	INNER JOIN dbo.Accounts a
+	ON ea.AccountID = a.AccountID
+	WHERE YEAR(a.StartDate) > 2012
+	ORDER BY e.FirstName DESC
+	
+------------------------------------------------------------------------------
+Section 3: Querying - P05. Count Cities
+
+SELECT c.CityName, br.[Name], COUNT(*) AS [EmployeesCount]
+	FROM dbo.Employees e
+	INNER JOIN dbo.Branches br
+	ON e.BranchID = br.BranchID
+	INNER JOIN dbo.Cities c
+	ON br.CityID = c.CityID
+	WHERE c.CityID NOT IN (4,5)
+	GROUP BY c.CityName, br.[Name]
+	HAVING COUNT(*) >= 3
+	
+------------------------------------------------------------------------------
+Section 3: Querying - P06. Loan Statistics
+
+SELECT SUM(l.Amount), MAX(l.Interest), MIN(e.Salary)
+	FROM dbo.Employees e
+	RIGHT JOIN dbo.EmployeesLoans el
+	ON e.EmployeeID = el.EmployeeID
+	JOIN dbo.Loans l
+	ON el.LoanID = l.LoanID
+	
+------------------------------------------------------------------------------
+Section 3: Querying - P07. Unite People
+
+SELECT TOP 3 e.FirstName, c.CityName
+	FROM dbo.Employees e
+	INNER JOIN dbo.Branches br
+	ON br.BranchID = e.BranchID
+	INNER JOIN dbo.Cities c
+	ON br.CityID = c.CityID
+UNION ALL
+SELECT TOP 3 cu.FirstName, ci.CityName
+	FROM dbo.Customers cu
+	INNER JOIN dbo.Cities ci
+	ON cu.CityID = ci.CityID
+	
+------------------------------------------------------------------------------
+Section 3: Querying - P08. Customers w/o Accounts
+
+SELECT c.CustomerID, c.Height
+	FROM dbo.Customers c
+	LEFT JOIN dbo.Accounts a
+	ON a.CustomerID = c.CustomerID
+	WHERE a.AccountID IS NULL
+	AND c.Height BETWEEN 1.74 AND 2.04
+	
+------------------------------------------------------------------------------
+Section 3: Querying - P09. Average Loans
+
+SELECT TOP 5 c.CustomerID, l.Amount
+	FROM dbo.Customers c
+	INNER JOIN dbo.Loans l
+	ON c.CustomerID = l.CustomerID
+	WHERE l.Amount >(SELECT AVG(l.Amount)
+					FROM dbo.Customers c
+					INNER JOIN dbo.Loans l
+					ON c.CustomerID = l.CustomerID
+					WHERE c.Gender = 'M')
+	ORDER BY c.LastName
+	
+------------------------------------------------------------------------------
+Section 3: Querying - P10. Oldest Account
+
+SELECT cu.CustomerID, cu.FirstName, a.StartDate
+	FROM dbo.Customers cu
+	INNER JOIN dbo.Accounts a
+	ON cu.CustomerID = a.CustomerID
+	WHERE a.StartDate = (SELECT MIN(a.StartDate)
+						FROM dbo.Customers cu
+						INNER JOIN dbo.Accounts a
+						ON cu.CustomerID = a.CustomerID)
+						
+------------------------------------------------------------------------------
+Section 4: Programmability - P01. String Joiner
+
+CREATE FUNCTION udf_ConcatString(@str1 VARCHAR(MAX), @str2 VARCHAR(MAX))
+RETURNS VARCHAR(MAX)
+	AS BEGIN
+		DECLARE @str1Reversed VARCHAR(MAX)
+		DECLARE @str2Reversed VARCHAR(MAX)
+		DECLARE @concatStr VARCHAR(MAX)
+		
+		SET @str1Reversed = REVERSE(@str1)
+		SET @str2Reversed = REVERSE(@str2)
+		SET @concatStr = CONCAT(@str1Reversed, @str2Reversed)
+		RETURN @concatStr
+	END
+	
+------------------------------------------------------------------------------
+Section 4: Programmability - P02. Inexpired Loans
+
+CREATE PROC usp_CustomersWithUnexpiredLoans
+	@CustomerID INT = 0
+	AS
+	BEGIN
+		SELECT c.CustomerID, c.FirstName, l.LoanID
+			FROM dbo.Customers c
+			LEFT JOIN dbo.Loans l
+			ON c.CustomerID = l.CustomerID
+			WHERE l.ExpirationDate IS NULL AND c.CustomerID = @CustomerID
+	END
+	
+------------------------------------------------------------------------------
+Section 4: Programmability - P03. Take Loan
+
+CREATE PROC usp_TakeLoan
+	@CustomerID INT,
+	@LoanAmount DECIMAL(18,2),
+	@Interest DECIMAL(4,2),
+	@StartDate DATE
+	AS BEGIN
+		BEGIN TRANSACTION
+		IF(@LoanAmount NOT BETWEEN 0.01 AND 100000)
+		RAISERROR('Invalid Loan Amount.', 16, 1)
+		ELSE
+		INSERT INTO dbo.Loans(StartDate, Amount, Interest, CustomerID)
+		VALUES(@StartDate, @LoanAmount, @Interest, @CustomerID)
+		COMMIT
+	END
+	
+------------------------------------------------------------------------------
+Section 4: Programmability - P04. Hire Employee
+
+create TRIGGER tr_NewEmployee ON dbo.Employees
+AFTER INSERT
+AS BEGIN
+	
+	DECLARE @DelEmployeeID INT
+	SET @DelEmployeeID =
+	(SELECT TOP 1 el.EmployeeID FROM dbo.EmployeesLoans el ORDER BY el.EmployeeID DESC)
+
+	DECLARE @TakeNewEmployeeID INT 
+	SET @TakeNewEmployeeID = (SELECT TOP 1 inserted.EmployeeID FROM inserted ORDER BY inserted.EmployeeID DESC)
+
+
+	UPDATE dbo.EmployeesLoans
+	SET EmployeeID = @TakeNewEmployeeID
+	
+	WHERE EmployeeID = @DelEmployeeID
+
+	--INSERT INTO dbo.EmployeesLoans(EmployeeID, LoanID)
+	--VALUES(@TakeNewEmployeeID, @DelLoanID)
+END
+
+------------------------------------------------------------------------------
+Section 5: Bonus - P01. Delete Trigger
+
+CREATE TRIGGER tr_InsteadOfDeleteAccount ON dbo.Accounts
+INSTEAD OF DELETE
+AS BEGIN
+  	DELETE FROM dbo.EmployeesAccounts
+  	where AccountID IN (select d.AccountID from deleted as d)
+	INSERT INTO dbo.AccountLogs(AccountID, AccountNumber, StartDate, CustomerID)
+	SELECT * FROM deleted
+  	DELETE FROM dbo.Accounts
+  	where AccountID in (select d.AccountID from deleted as d)
+END
+
+------------------------------------------------------------------------------
